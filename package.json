@@ -1,0 +1,16 @@
+{
+  "name": "aws-sam-express",
+  "version": "1.0.0",
+  "description": "A simple demo to show the integration of AWS Serverless Application Model (SAM) and an NodeJS Express application, that will deploy to an API gateway and Lambda.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Sayantam Dey <sayantam@gmail.com>",
+  "license": "ISC",
+  "dependencies": {
+    "aws-serverless-express": "^3.3.5",
+    "body-parser": "^1.18.3",
+    "express": "^4.16.3"
+  }
+}
