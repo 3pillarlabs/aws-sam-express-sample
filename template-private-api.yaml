@@ -1,0 +1,149 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  aws-sam-express-private
+
+  SAM Template for private APIs.
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 3
+
+Parameters:
+  VpcIdParameter:
+    Type: String
+    Description: VPC ID in which the VPC Endpoint should be created
+  VpcAllowedSecurityGroupIdParameter:
+    Type: String
+    Description: Security Group Id that is allowed to communicate to private API gateway
+  VpcEndpointSubnetIdsParameter:
+    Type: "List<AWS::EC2::Subnet::Id>"
+    Description: The ID of one or more subnets in which to create an endpoint network interface
+
+Resources:
+
+  SocialEventsFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: ./
+      Handler: lambda.handler
+      Runtime: nodejs8.10
+      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
+        Variables:
+            PARAM1: VALUE
+      Events:
+        APIRoot:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /
+            Method: ANY
+            RestApiId: !Ref SocialEventsPrivateApi
+        API:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+            RestApiId: !Ref SocialEventsPrivateApi
+
+
+  SocialEventsApiSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VpcIdParameter
+      GroupDescription: Allows access over 443 to a single VPC Security Group
+      SecurityGroupIngress:
+        -
+          IpProtocol: "tcp"
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref VpcAllowedSecurityGroupIdParameter
+
+
+  SocialEventAPIAccessEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId:
+        Ref: VpcIdParameter
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.execute-api"
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds: !Ref VpcEndpointSubnetIdsParameter
+      SecurityGroupIds:
+        -
+          !Ref SocialEventsApiSecurityGroup
+
+
+  SocialEventsPrivateApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      MethodSettings:
+        - HttpMethod: '*'
+          ResourcePath: /
+          LoggingLevel: ERROR
+      EndpointConfiguration: PRIVATE
+      Variables:
+        ServerlessExpressLambdaFunctionName: !Ref SocialEventsFunction
+      DefinitionBody:
+        swagger: 2.0
+        info:
+          title: SocialEventsPrivateApi
+        basePath: /Prod
+        schemes:
+          - https
+        x-amazon-apigateway-policy:
+          Version: "2012-10-17"
+          Statement:
+            -
+              Effect: "Allow"
+              Principal: "*"
+              Action:
+                - "execute-api:Invoke"
+              Resource: "execute-api:/*"
+              Condition:
+                StringEquals:
+                  aws:sourceVpce: !Ref SocialEventAPIAccessEndpoint
+
+        paths:
+          /:
+            x-amazon-apigateway-any-method:
+              produces:
+              - application/json
+              x-amazon-apigateway-integration:
+                responses:
+                  default:
+                    statusCode: 200
+                uri: !Join [ ":", [ !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}", "function:${stageVariables.ServerlessExpressLambdaFunctionName}/invocations"] ]
+                passthroughBehavior: when_no_match
+                httpMethod: POST
+                type: aws_proxy
+          /{proxy+}:
+            x-amazon-apigateway-any-method:
+              produces:
+              - application/json
+              parameters:
+              - name: proxy
+                in: path
+                required: true
+                type: string
+              x-amazon-apigateway-integration:
+                uri: !Join [ ":", [ !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}", "function:${stageVariables.ServerlessExpressLambdaFunctionName}/invocations"] ]
+                httpMethod: POST
+                type: aws_proxy
+        x-amazon-apigateway-binary-media-types:
+          - '*/*'
+
+
+Outputs:
+  SocialEventsPrivateApi:
+    Description: "API Gateway endpoint URL for Prod stage"
+    Value: !Sub "https://${SocialEventsPrivateApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+
+  SocialEventsFunction:
+    Description: "Social Events Lambda Function ARN"
+    Value: !GetAtt SocialEventsFunction.Arn
+
+  SocialEventsFunctionIamRole:
+    Description: "Implicit IAM Role created for Social Events function"
+    Value: !GetAtt SocialEventsFunction.Arn

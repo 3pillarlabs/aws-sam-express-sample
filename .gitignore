@@ -130,4 +130,5 @@ $RECYCLE.BIN/
 
 # app specific
 packaged.yaml
+*-packaged.yaml
 .python-version
