@@ -12,10 +12,10 @@ Globals:
 
 Parameters:
   VpcIdParameter:
-    Type: String
+    Type: "AWS::EC2::VPC::Id"
     Description: VPC ID in which the VPC Endpoint should be created
   VpcAllowedSecurityGroupIdParameter:
-    Type: String
+    Type: "AWS::EC2::SecurityGroup::Id"
     Description: Security Group Id that is allowed to communicate to private API gateway
   VpcEndpointSubnetIdsParameter:
     Type: "List<AWS::EC2::Subnet::Id>"
