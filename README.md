@@ -62,7 +62,8 @@ sam local start-api --skip-pull-image
 ```bash
 curl -v http://localhost:3000/
 curl -v http://localhost:3000/users
-curl -v http://localhost:3000/users/1/events -d '{"foo": {"bar": "quux"}}' -H 'Content-Type: application/json'
+curl -v http://localhost:3000/users/1/events -d '{"foo": {"bar": "quux"}}' \
+-H 'Content-Type: application/json'
 ```
 
 ## AWS
@@ -115,6 +116,8 @@ aws cloudformation describe-stacks \
 
 For an API gateway accessible through one or more subnets of a single VPC.
 
+![Private API](https://docs.aws.amazon.com/apigateway/latest/developerguide/images/apigateway-private-api-accessing-api.png)
+
 #### Requirements
 
 - A VPC, you should know the VPC Id.
@@ -151,8 +154,6 @@ sam deploy \
     --capabilities CAPABILITY_IAM
 ```
 
-> **See [Serverless Application Model (SAM) HOWTO Guide](https://github.com/awslabs/serverless-application-model/blob/master/HOWTO.md) for more details in how to get started.**
-
 After deployment is complete you can run the following command to retrieve the API Gateway Endpoint URL:
 
 ```bash
@@ -161,7 +162,7 @@ aws cloudformation describe-stacks \
     --query 'Stacks[].Outputs'
 ```
 
-If your VPC allows private DNS, then this API will be accessible through an instance in an allowed subnet and security group. If your VPC does not allow private DNS, you can look up the API URL from the VPC Endpoint this template creates.
+If your VPC allows private DNS, then this API will be accessible through an EC2 instance in a managed subnet and allowed security group. If your VPC does not allow private DNS, you can look up the API URL from the VPC Endpoint this template creates.
 
 ```bash
 aws cloudformation ec2 describe-vpc-endpoints --filters Name=vpc-id,Values=<VPC Id>
@@ -170,7 +171,8 @@ aws cloudformation ec2 describe-vpc-endpoints --filters Name=vpc-id,Values=<VPC 
 Depending on the number of subnets managed by the endpoint, the last ``DnsEntries.DnsName`` will be the public DNS.
 The API can be accessed by the instance in the allowed subnet and security group:
 ```
-curl -v https://vpce-<VPCE Id>-<AWS AVAILABILITY ZONE>.execute-api.us-east-1.vpce.amazonaws.com/Prod/ -H 'Host: <REST API Id>.execute-api.<AWS REGION>.amazonaws.com'
+curl -v https://vpce-<VPCE Id>-<AWS AVAILABILITY ZONE>.execute-api.us-east-1.vpce.amazonaws.com/Prod/ \
+-H 'Host: <REST API Id>.execute-api.<AWS REGION>.amazonaws.com'
 ```
 
 
